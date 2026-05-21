@@ -47,15 +47,41 @@ int main(void)
 
 void vTareaEscanearTeclado(void *pvParameters) 
 {
-    char teclaSimulada = '1'; // Aquí iría la lectura real de tu hardware
+    char caracterLeido;
+
     for (;;) 
     {
-        // Lógica para detectar pulsación física...
-        
-        // Enviamos el dato a la cola de forma segura
-        xQueueSend(xColaTeclas, &teclaSimulada, 0);
+        // Explicación para el profesor: fgetc es una función bloqueante del sistema operativo base.
+        // En una simulación nativa en PC, detiene esta tarea hasta que el usuario presiona una tecla + Enter.
+        caracterLeido = fgetc(stdin);
 
-        // Bloqueo periódico de la tarea por 40 milisegundos
+        // Filtramos caracteres de control como saltos de línea ('\n' o '\r') 
+        // que mete la terminal automáticamente al presionar Enter.
+        if (caracterLeido != '\n' && caracterLeido != '\r' && caracterLeido != EOF) 
+        {
+            
+            // Validamos que el carácter sea un dígito válido (0-9) o comandos (*, #)
+            if ((caracterLeido >= '0' && caracterLeido <= '9') || caracterLeido == '#' || caracterLeido == '*') 
+            {
+                
+                // ¡Mecanismo RTOS!: Enviamos la tecla detectada a la cola.
+                // Usamos un tiempo de espera de 0 (no bloqueante) porque si la cola se llega a llenar,
+                // preferimos descartar la tecla antes de congelar la lectura del teclado.
+                xQueueSend(xColaTeclas, &caracterLeido, 0);
+            } 
+            else 
+            {
+                // Si el usuario presiona una letra (ej. 'A'), le avisamos de forma segura usando el Mutex
+                if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) 
+                {
+                    printf("\n[ERROR] Tecla '%c' invalida. Use solo numeros, * o #.\n", caracterLeido);
+                    printf("[LCD] Ingrese Clave:\n");
+                    xSemaphoreGive(xMutexLCD);
+                }
+            }
+        }
+
+        // Dejamos respirar al planificador de FreeRTOS por 40ms para evitar saturar el hilo de simulación
         vTaskDelay(pdMS_TO_TICKS(40));
     }
 }
