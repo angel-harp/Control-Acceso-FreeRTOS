@@ -1,0 +1,18 @@
+# --- Configuraciones locales de VS Code ---
+.vscode/
+.history/
+*.log
+.DS_Store
+
+# --- Temporales de compilación en C (Binarios) ---
+build/
+.build/
+out/
+bin/
+obj/
+*.o
+*.d
+*.elf
+*.bin
+*.hex
+*.map
