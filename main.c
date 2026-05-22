@@ -195,11 +195,14 @@ void vTareaProcesarSeguridad(void *pvParameters)
                 }
             } 
             // CASO 2: Cancelar/Borrar con la tecla '*'
-            else if (teclaRecibida == '*') {
+            else if (teclaRecibida == '*') 
+            {
                 memset(bufferClave, 0, sizeof(bufferClave));
                 indiceClave = 0;
                 
-                if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) {
+                if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) 
+                {
+
                     printf("\n[LCD] Entrada borrada.\n");
                     printf("[LCD] Ingrese Clave:\n");
                     xSemaphoreGive(xMutexLCD);
@@ -208,7 +211,8 @@ void vTareaProcesarSeguridad(void *pvParameters)
             // CASO 3: Acumular dígitos numéricos
             else {
                 // Solo permitimos ingresar un máximo de 4 dígitos
-                if (indiceClave < 4) {
+                if (indiceClave < 4) 
+                {
                     bufferClave[indiceClave] = teclaRecibida;
                     indiceClave++;
 
