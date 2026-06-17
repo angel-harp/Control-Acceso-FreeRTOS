@@ -1,0 +1,77 @@
+menu "Configuracion Cerradura FreeRTOS"
+
+    config PIN_SERVO
+        int "Numero de PIN GPIO para el Servomotor"
+        default 12
+        help
+            Asigna el pin GPIO que controlará el pulso PWM del servomotor (pestillo).
+
+    config PIN_LED_VERDE
+        int "Numero de PIN GPIO para el LED Verde (Acceso Exitoso)"
+        default 13
+        help
+            Asigna el pin GPIO para el LED indicador de acceso permitido.
+
+    config PIN_LED_ROJO
+        int "Numero de PIN GPIO para el LED Rojo (Alarma/Bloqueo)"
+        default 14
+        help
+            Asigna el pin GPIO para el LED indicador de sistema bloqueado.
+
+    config CLAVE_MAESTRA
+        string "Clave de Acceso del Sistema"
+        default "1234"
+        help
+            Define la contraseña de 4 dígitos para abrir la cerradura.
+
+    endmenu        
+
+    menu "Configuracion de Pines para Matriz de Teclado 4x4"        
+
+    config PIN_FILA_1
+        int "Fila 1 GPIO"
+        default 4
+    config PIN_FILA_2
+        int "Fila 2 GPIO"
+        default 5
+    config PIN_FILA_3
+        int "Fila 3 GPIO"
+        default 18
+    config PIN_FILA_4
+        int "Fila 4 GPIO"
+        default 19
+
+    config PIN_COL_1
+        int "Columna 1 GPIO"
+        default 21
+    config PIN_COL_2
+        int "Columna 2 GPIO"
+        default 22
+    config PIN_COL_3
+        int "Columna 3 GPIO"
+        default 23
+    config PIN_COL_4
+        int "Columna 4 GPIO"
+        default 25
+
+endmenu
+
+menu "Configuracion de Pines para Pantalla LCD Menu dinamico para I2C"
+
+    config PIN_SDA
+        int "Pin GPIO para I2C SDA"
+        default 21
+        help
+            Asigna el pin GPIO para la línea de datos I2C de la pantalla.
+
+    config PIN_SCL
+        int "Pin GPIO para I2C SCL"
+        default 22
+        help
+            Asigna el pin GPIO para la línea de reloj I2C de la pantalla.
+
+    config LCD_ADDR
+        hex "Dirección I2C del LCD (ej: 0x27 o 0x3F)"
+        default 0x27
+
+    endmenu
