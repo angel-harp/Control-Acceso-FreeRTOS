@@ -81,10 +81,14 @@ void app_main(void) {
     };
     i2c_param_config(I2C_NUM_0, &conf_i2c);
     i2c_driver_install(I2C_NUM_0, conf_i2c.mode, 0, 0, 0);
+    vTaskDelay(pdMS_TO_TICKS(100)); // Espera de estabilidad
 
     // 2. Inicializar la pantalla con la firma exacta de tu librería:
     // Pide: (&manejador, direccion_i2c, puerto_i2c)
     lcd_init(&xLcdHandle, CONFIG_LCD_ADDR, I2C_NUM_0);
+
+    //LE DAMOS LA ORDEN DE ARRANQUE A LA PANTALLA PARA QUE SE CONFIGURE SEGÚN SUS PROTOCOLOS INTERNOS
+    lcd_begin(&xLcdHandle, 16, 2);
     
     // Opcional: Si tu librería requiere un paso de encendido posterior
     lcd_clear(&xLcdHandle);
@@ -104,16 +108,56 @@ void app_main(void) {
 /* --- Implementación de Tareas --- */
 
 void vTareaEscanearTeclado(void *pvParameters) {
-    int caracterLeido;
-    for (;;) {
-        caracterLeido = fgetc(stdin); // Mantenemos la simulación por terminal por ahora
-        if (caracterLeido != '\n' && caracterLeido != '\r' && caracterLeido != EOF) {
-            if ((caracterLeido >= '0' && caracterLeido <= '9') || caracterLeido == '#' || caracterLeido == '*') {
-                char tecla = (char)caracterLeido;
-                xQueueSend(xColaTeclas, &tecla, 0);
-            } 
+    // Definimos la matriz con los caracteres físicos del teclado 4x4
+    char teclas[4][4] = 
+    {
+        {'1','2','3','A'},
+        {'4','5','6','B'},
+        {'7','8','9','C'},
+        {'*','0','#','D'}
+    };
+
+    // Arreglos con las macros de tus pines del Kconfig para recorrerlos con un ciclo for
+    const gpio_num_t pines_filas[4] = 
+    {
+        CONFIG_PIN_FILA_1, CONFIG_PIN_FILA_2, CONFIG_PIN_FILA_3, CONFIG_PIN_FILA_4
+    };
+    const gpio_num_t pines_columnas[4] = 
+    {
+        CONFIG_PIN_COL_1, CONFIG_PIN_COL_2, CONFIG_PIN_COL_3, CONFIG_PIN_COL_4
+    };
+
+    for (;;) 
+    {
+        // ALGORITMO DE BARRIDO MATRICIAL
+        for (int f = 0; f < 4; f++) {
+            // 1. Ponemos la fila actual en BAJO (0V)
+            gpio_set_level(pines_filas[f], 0);
+            vTaskDelay(pdMS_TO_TICKS(5)); // Mini retraso para que se estabilice el voltaje del pin
+
+            for (int c = 0; c < 4; c++) 
+            {
+                // 2. Si la columna lee un '0', significa que el botón en esa intersección se presionó
+                if (gpio_get_level(pines_columnas[c]) == 0) 
+                {
+                    char teclaDetectada = teclas[f][c];
+                    
+                    // 3. Enviamos el caracter detectado a la cola de FreeRTOS
+                    xQueueSend(xColaTeclas, &teclaDetectada, 0);
+
+                    // 4. ANTI-REBOTE (Debounce): Esperamos a que el usuario suelte el botón 
+                    // para evitar que mande 50 asteriscos de un solo golpe.
+                    while (gpio_get_level(pines_columnas[c]) == 0) 
+                    {
+                        vTaskDelay(pdMS_TO_TICKS(20));
+                    }
+                }
+            }
+            // 5. Volvemos a dejar la fila en ALTO (3.3V) antes de pasar a la siguiente
+            gpio_set_level(pines_filas[f], 1);
         }
-        vTaskDelay(pdMS_TO_TICKS(40));
+        
+        vTaskDelay(pdMS_TO_TICKS(30)); // Frecuencia de escaneo periódico general
     }
 }
 
@@ -214,10 +258,20 @@ void vTareaProcesarSeguridad(void *pvParameters) {
                 if (indiceClave < 4) {
                     bufferClave[indiceClave] = teclaRecibida;
                     
-                    if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) {
-                        // Posiciona el asterisco dinámicamente en la fila 2 (índice 1)
+                    if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) 
+                    {
+                        // SI queremos que se vea en la pantalla lo que estamos ingresando
                         lcd_set_cursor(&xLcdHandle, indiceClave, 1);
-                        lcd_print(&xLcdHandle, "*");
+                        // Creamos un string temporal con el número y su terminación limpia
+                        char textoNumero[2] = {teclaRecibida, '\0'};
+                        // Imprimimos el número real en la pantalla física
+                        lcd_print(&xLcdHandle, textoNumero);
+
+
+                        /* Si queremos que aparezca un asterisco en la posición actual
+                        lcd_set_cursor(&xLcdHandle, indiceClave, 1);
+                        lcd_print(&xLcdHandle, "*");*/
+                        
                         xSemaphoreGive(xMutexLCD);
                     }
                     indiceClave++;

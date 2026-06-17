@@ -18,6 +18,12 @@ menu "Configuracion Cerradura FreeRTOS"
         help
             Asigna el pin GPIO para el LED indicador de sistema bloqueado.
 
+    config PIN_BUZZER
+        int "Numero de PIN GPIO para el Buzzer (Alarma Sonora)"
+        default 15
+        help
+            Asigna el pin GPIO que controlará el buzzer pasivo/activo para alertas de audio
+
     config CLAVE_MAESTRA
         string "Clave de Acceso del Sistema"
         default "1234"
