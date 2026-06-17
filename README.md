@@ -38,6 +38,54 @@ Parchado por Inyección de Macros: Para resolver conflictos con funciones de tie
 
 ---
 
+Aquí tienes las secciones con el mismo formato limpio de texto plano y neutro, pero ahora con un ícono temático al lado de cada título para que resalte visualmente en tu informe o archivo Markdown:
+
+## 🔌 Hardware
+El sistema se compone de una arquitectura de hardware basada en un microcontrolador de 32 bits y periféricos comerciales conectados mediante buses serie y líneas de propósito general (GPIO). La selección de los componentes responde a criterios de bajo consumo, viabilidad de integración en tiempo real y compatibilidad con lógica de 3.3V y 5V.
+
+Los componentes de hardware integrados en el sistema son los siguientes:
+
+Microcontrolador ESP32 (NodeMCU): Unidad central de procesamiento equipada con un microprocesador Xtensa de doble núcleo a 32 bits. Se encarga de la ejecución del kernel de FreeRTOS, el procesamiento del barrido matricial y el control de los actuadores mediante señales digitales y modulación por ancho de pulsos (PWM).
+
+Pantalla LCD 16x2 con Adaptador I2C (Chip PCF8574): Periférico de salida utilizado como interfaz visual para el usuario. El adaptador PCF8574 reduce el uso de pines en el microcontrolador a solo dos hilos (SDA y SCL) mediante el protocolo I2C, operando bajo la dirección hexadecimal 0x27. Cuenta con un potenciómetro acoplado para la regulación manual del contraste analógico.
+
+Teclado Matricial 4x4: Periférico de entrada dispuesto en una matriz de 4 filas y 4 columnas. Permite la introducción de datos alfanuméricos mediante un proceso de barrido secuencial por hardware, donde las filas se configuran como salidas digitales y las columnas como entradas con resistencias de pull-up activadas.
+
+Servomotor SG90: Actuador analógico de posición utilizado como pestillo físico de la cerradura. Su posición se controla mediante señales PWM generadas por el controlador LEDC nativo del ESP32, variando el ancho de pulso entre 0.5 ms y 2.5 ms para definir el ángulo de giro (0 a 180 grados).
+
+Diodos LED (Verde y Rojo): Indicadores lumínicos de estado. El LED verde señaliza la condición de acceso permitido y la apertura del pestillo, mientras que el LED rojo indica estados de error en la clave o el bloqueo temporal del sistema por intentos fallidos.
+
+Buzzer Pasivo/Activo: Transductor piezoeléctrico utilizado para la emisión de alertas sonoras y retroalimentación acústica ante la pulsación de teclas, accesos denegados o estados de alarma.
+
+Fuente de Alimentación Externa (5V DC, 2.4A, 12W): Unidad de potencia regulada conectada al puerto USB de la placa. Proporciona el flujo de corriente necesario para mitigar el ruido eléctrico y absorber las caídas de tensión provocadas por la activación simultánea del servomotor, los LEDs y la retroiluminación del LCD.
+
+## 📋 Requisitos
+Para garantizar la correcta compilación, despliegue y operación del sistema de control de acceso, el entorno de desarrollo y ejecución debe cumplir con las siguientes especificaciones técnicas:
+
+Requisitos de Software y Herramientas de Desarrollo:
+
+Framework ESP-IDF (Versión 5.5 o superior): Entorno de desarrollo oficial de Espressif basado en herramientas GNU y CMake, necesario para la compilación del código fuente en C puro y la gestión de los componentes del proyecto.
+
+Herramienta de Configuración Gráfica (Menuconfig / Kconfig): Extensión integrada en el entorno de desarrollo que permite interactuar con el archivo Kconfig.projbuild para la asignación dinámica de pines GPIO y parámetros del bus I2C en tiempo de compilación.
+
+Sistema de Gestión de Componentes de ESP-IDF: Se requiere conectividad a internet durante la primera compilación para la descarga automática del componente externo de gestión del LCD (iamflinks/i2c_lcd_pcf8574) a través del registro oficial de Espressif.
+
+Compilador CMake y Ninja: Herramientas del sistema de construcción de ESP-IDF utilizadas para procesar la estructura de archivos del proyecto y compilar el firmware de manera optimizada.
+
+Requisitos de Configuración del Firmware:
+
+Habilitación de Retrocompatibilidad en FreeRTOS: Es obligatorio tener activada la macro CONFIG_FREERTOS_ENABLE_BACKWARD_COMPATIBILITY en la configuración del proyecto para permitir la correcta ejecución de funciones de temporización heredadas en las librerías del LCD.
+
+Configuración de Pines Libres de Conflicto: Los pines GPIO asignados en el menú de configuración para el teclado matricial deben estar completamente disjuntos de las líneas dedicadas al bus I2C (GPIO 21 para SDA y GPIO 22 para SCL), evitando superposiciones de hardware.
+
+Requisitos Eléctricos y de Conexión Física:
+
+Alimentación de Voltaje Dual Interno: El microcontrolador ESP32 debe operar con un voltaje regulado de 3.3V provisto por su placa de desarrollo, mientras que la pantalla LCD 16x2 y el servomotor SG90 deben conectarse a la línea de 5V (VIN/V5) para asegurar su correcto funcionamiento óptimo.
+
+Resistencias de Pull-Up en el Bus I2C: En caso de longitudes de cable superiores a 15 centímetros en la protoboard, se requiere la adición de resistencias de pull-up externas (de 4.7 kOhm a 10 kOhm) conectadas a las líneas SDA y SCL para atenuar el ruido eléctrico en la comunicación de datos.
+
+Masa Común de Referencia (GND): Todos los componentes del circuito (ESP32, LCD, Teclado y Servomotor) deben compartir un mismo nodo de tierra físico para evitar voltajes flotantes y errores de lectura en las señales analógicas y digitales.
+
 ## ⏱️ Conceptos de Tiempo Real Demostrados
 Aquí tienes el último bloque correspondiente a los conceptos demostrados unificado en el mismo formato de texto plano y limpio, listo para que lo copies y pegues directamente en tu informe:
 
