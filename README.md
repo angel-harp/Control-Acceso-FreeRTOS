@@ -47,17 +47,31 @@ Los componentes de hardware integrados en el sistema son los siguientes:
 
 Microcontrolador ESP32 (NodeMCU): Unidad central de procesamiento equipada con un microprocesador Xtensa de doble núcleo a 32 bits. Se encarga de la ejecución del kernel de FreeRTOS, el procesamiento del barrido matricial y el control de los actuadores mediante señales digitales y modulación por ancho de pulsos (PWM).
 
+<img width="250" height="200" alt="buzzer pasivo-activo" src="https://github.com/user-attachments/assets/5a51ab82-b724-457d-977f-fca5523ead28" />
+
 Pantalla LCD 16x2 con Adaptador I2C (Chip PCF8574): Periférico de salida utilizado como interfaz visual para el usuario. El adaptador PCF8574 reduce el uso de pines en el microcontrolador a solo dos hilos (SDA y SCL) mediante el protocolo I2C, operando bajo la dirección hexadecimal 0x27. Cuenta con un potenciómetro acoplado para la regulación manual del contraste analógico.
+
+<img width="250" height="200" alt="lcd 16x2" src="https://github.com/user-attachments/assets/7fda7b1a-fc5b-4f06-9e79-8a564a7a7827" />
 
 Teclado Matricial 4x4: Periférico de entrada dispuesto en una matriz de 4 filas y 4 columnas. Permite la introducción de datos alfanuméricos mediante un proceso de barrido secuencial por hardware, donde las filas se configuran como salidas digitales y las columnas como entradas con resistencias de pull-up activadas.
 
+<img width="250" height="200" alt="keypad 4x4" src="https://github.com/user-attachments/assets/6eca9232-2469-4911-babd-8106e6bb91b9" />
+
 Servomotor SG90: Actuador analógico de posición utilizado como pestillo físico de la cerradura. Su posición se controla mediante señales PWM generadas por el controlador LEDC nativo del ESP32, variando el ancho de pulso entre 0.5 ms y 2.5 ms para definir el ángulo de giro (0 a 180 grados).
+
+<img width="250" height="200" alt="servo sg90" src="https://github.com/user-attachments/assets/ef2994dc-00f2-47ab-9b91-79b46ae25731" />
 
 Diodos LED (Verde y Rojo): Indicadores lumínicos de estado. El LED verde señaliza la condición de acceso permitido y la apertura del pestillo, mientras que el LED rojo indica estados de error en la clave o el bloqueo temporal del sistema por intentos fallidos.
 
+<img width="250" height="200" alt="diodos leds" src="https://github.com/user-attachments/assets/c28283b2-f439-41d2-86a4-b1d092b47c46" />
+
 Buzzer Pasivo/Activo: Transductor piezoeléctrico utilizado para la emisión de alertas sonoras y retroalimentación acústica ante la pulsación de teclas, accesos denegados o estados de alarma.
 
+<img width="250" height="200" alt="buzzer pasivo-activo" src="https://github.com/user-attachments/assets/7bb1a06d-0b3f-440f-9b1c-969e9ad69651" />
+
 Fuente de Alimentación Externa (5V DC, 2.4A, 12W): Unidad de potencia regulada conectada al puerto USB de la placa. Proporciona el flujo de corriente necesario para mitigar el ruido eléctrico y absorber las caídas de tensión provocadas por la activación simultánea del servomotor, los LEDs y la retroiluminación del LCD.
+
+<img width="250" height="200" alt="Fuente de Alimentación Externa (5V DC, 2 4A, 12W)" src="https://github.com/user-attachments/assets/1f6a0d0c-702f-4584-9d98-d96039359474" />
 
 ## 📋 Requisitos
 Para garantizar la correcta compilación, despliegue y operación del sistema de control de acceso, el entorno de desarrollo y ejecución debe cumplir con las siguientes especificaciones técnicas:
