@@ -47,7 +47,7 @@ Los componentes de hardware integrados en el sistema son los siguientes:
 
 Microcontrolador ESP32 (NodeMCU): Unidad central de procesamiento equipada con un microprocesador Xtensa de doble núcleo a 32 bits. Se encarga de la ejecución del kernel de FreeRTOS, el procesamiento del barrido matricial y el control de los actuadores mediante señales digitales y modulación por ancho de pulsos (PWM).
 
-<img width="250" height="200" alt="buzzer pasivo-activo" src="https://github.com/user-attachments/assets/5a51ab82-b724-457d-977f-fca5523ead28" />
+<img width="250" height="200" alt="esp32" src="https://github.com/user-attachments/assets/c0ac0a34-578e-43d8-aa60-1df34666bc11" />
 
 Pantalla LCD 16x2 con Adaptador I2C (Chip PCF8574): Periférico de salida utilizado como interfaz visual para el usuario. El adaptador PCF8574 reduce el uso de pines en el microcontrolador a solo dos hilos (SDA y SCL) mediante el protocolo I2C, operando bajo la dirección hexadecimal 0x27. Cuenta con un potenciómetro acoplado para la regulación manual del contraste analógico.
 
