@@ -1,5 +1,6 @@
 # Sistema de Control de Acceso con Autenticación por Código (FreeRTOS)
 
+
 ## 📝 Descripción del Proyecto
 Este proyecto implementa un sistema de seguridad y control de acceso automatizado utilizando FreeRTOS sobre el entorno ESP-IDF en C puro. El sistema administra de forma concurrente y en tiempo real el escaneo de un teclado matricial 4x4 físico, el procesamiento de una clave de seguridad, el manejo de bloqueos temporales por intentos fallidos, la emisión de alertas sonoras y la actualización de periféricos físicos de salida: una pantalla LCD 16x2 (mediante el bus de comunicación I2C con el chip PCF8574), indicadores LED de estado y un servomotor (SG90) que actúa como pestillo físico de la cerradura.
 
@@ -27,6 +28,7 @@ A continuación, se detallan los componentes y recursos que estructuran el firmw
 | **xColaTeclas** | Queue | — | 10 unidades | Almacena de forma segura hasta 10 datos de tipo `char` (`1-9`, `*`, `#`). Desacopla por completo la velocidad de entrada del usuario del procesamiento lógico de seguridad. |
 | **xMutexLCD** | Mutex | — | — | Token de exclusión mutua que protege de forma atómica las funciones del bus I2C, evitando condiciones de carrera entre tareas que intenten escribir en la pantalla en el mismo instante. |
 
+
 ## ⚙️ Integración de Drivers de Hardware y Retrocompatibilidad
 Un aspecto crítico en el diseño de esta arquitectura fue la migración e integración de componentes de hardware reales en un entorno de desarrollo moderno bajo ESP-IDF v5.5. Dado que los drivers comerciales para el controlador de pantalla I2C (PCF8574) suelen estar diseñados para versiones heredadas del framework, la arquitectura debió ser adaptada mediante técnicas de ingeniería de software:
 
@@ -36,9 +38,6 @@ Habilitación de Retrocompatibilidad del Kernel: Se configuró explícitamente l
 
 Parchado por Inyección de Macros: Para resolver conflictos con funciones de tiempo obsoletas del fabricante a nivel de la ROM profunda del microcontrolador, se inyectó una macro de sustitución en la compilación local (#define ets_delay_us(us) esp_rom_delay_us(us)), garantizando que las ráfagas de inicialización y el retardo de 4 bits exigidos por la pantalla se ejecuten bajo los estándares modernos de temporización de Espressif.
 
----
-
-Aquí tienes las secciones con el mismo formato limpio de texto plano y neutro, pero ahora con un ícono temático al lado de cada título para que resalte visualmente en tu informe o archivo Markdown:
 
 ## 🔌 Hardware
 El sistema se compone de una arquitectura de hardware basada en un microcontrolador de 32 bits y periféricos comerciales conectados mediante buses serie y líneas de propósito general (GPIO). La selección de los componentes responde a criterios de bajo consumo, viabilidad de integración en tiempo real y compatibilidad con lógica de 3.3V y 5V.
@@ -73,6 +72,7 @@ Fuente de Alimentación Externa (5V DC, 2.4A, 12W): Unidad de potencia regulada 
 
 <img width="250" height="200" alt="Fuente de Alimentación Externa (5V DC, 2 4A, 12W)" src="https://github.com/user-attachments/assets/1f6a0d0c-702f-4584-9d98-d96039359474" />
 
+
 ## 📋 Requisitos
 Para garantizar la correcta compilación, despliegue y operación del sistema de control de acceso, el entorno de desarrollo y ejecución debe cumplir con las siguientes especificaciones técnicas:
 
@@ -99,6 +99,7 @@ Alimentación de Voltaje Dual Interno: El microcontrolador ESP32 debe operar con
 Resistencias de Pull-Up en el Bus I2C: En caso de longitudes de cable superiores a 15 centímetros en la protoboard, se requiere la adición de resistencias de pull-up externas (de 4.7 kOhm a 10 kOhm) conectadas a las líneas SDA y SCL para atenuar el ruido eléctrico en la comunicación de datos.
 
 Masa Común de Referencia (GND): Todos los componentes del circuito (ESP32, LCD, Teclado y Servomotor) deben compartir un mismo nodo de tierra físico para evitar voltajes flotantes y errores de lectura en las señales analógicas y digitales.
+
 
 ## ⏱️ Conceptos de Tiempo Real Demostrados
 Aquí tienes el último bloque correspondiente a los conceptos demostrados unificado en el mismo formato de texto plano y limpio, listo para que lo copies y pegues directamente en tu informe:
