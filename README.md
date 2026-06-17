@@ -1,5 +1,6 @@
 # Sistema de Control de Acceso con Autenticación por Código (FreeRTOS)
 
+<<<<<<< HEAD
 ## 📝 Descripción del Proyecto
 Este proyecto implementa un sistema de seguridad y control de acceso automatizado utilizando FreeRTOS sobre el entorno ESP-IDF en C puro. El sistema administra de forma concurrente y en tiempo real el escaneo de un teclado matricial 4x4 físico, el procesamiento de una clave de seguridad, el manejo de bloqueos temporales por intentos fallidos, la emisión de alertas sonoras y la actualización de periféricos físicos de salida: una pantalla LCD 16x2 (mediante el bus de comunicación I2C con el chip PCF8574), indicadores LED de estado y un servomotor (SG90) que actúa como pestillo físico de la cerradura.
 
@@ -10,7 +11,18 @@ El sistema destaca por su enfoque de ingeniería en dos pilares fundamentales:
 Flexibilidad y modularidad de Hardware: Implementa un menú dinámico de configuración embebido (Kconfig.projbuild), el cual permite mapear y modificar gráficamente los pines GPIO de los periféricos (teclado, servos, LEDs, bus I2C) y la dirección hexadecimal de la pantalla (0x27) sin necesidad de alterar el código fuente.
 
 Autonomía y Robustez Energética: El dispositivo fue diseñado y testeado para operar de forma 100% autónoma e independiente de una computadora, siendo alimentado por una fuente externa regulada de 5V DC a 2.4A (12W). Esto garantiza el suministro eléctrico necesario para absorber los picos de demanda de corriente del servomotor y el buzzer durante eventos críticos de acceso, evitando caídas de tensión (brownouts) y garantizando la estabilidad operativa del microcontrolador y el bus I2C.
+=======
+## 📌 Descripción del Proyecto
+Este proyecto implementa un sistema de seguridad y control de acceso automatizado utilizando FreeRTOS sobre el entorno ESP-IDF en C puro. El sistema administra de forma concurrente y en tiempo real el escaneo de un teclado matricial 4x4 físico, el procesamiento de una clave de seguridad, el manejo de bloqueos temporales por intentos fallidos, la emisión de alertas sonoras y la actualización de periféricos físicos de salida: una pantalla LCD 16x2 (mediante el bus de comunicación I2C con el chip PCF8574), indicadores LED de estado y un servomotor (SG90) que actúa como pestillo físico de la cerradura.
 
+A diferencia de la programación secuencial tradicional basada en bucles bloqueantes (polling), este desarrollo utiliza un enfoque determinista estructurado en tareas con prioridades definidas. La comunicación entre subtareas se gestiona a través de colas de mensajes (Queue) y la protección de recursos compartidos de hardware se realiza mediante semáforos de exclusión mutua (Mutex).
+>>>>>>> aa0a479f5e0d00407cdaf8234b927007fc3be831
+
+El sistema destaca por su enfoque de ingeniería en dos pilares fundamentales:
+
+Flexibilidad y modularidad de Hardware: Implementa un menú dinámico de configuración embebido (Kconfig.projbuild), el cual permite mapear y modificar gráficamente los pines GPIO de los periféricos (teclado, servos, LEDs, bus I2C) y la dirección hexadecimal de la pantalla (0x27) sin necesidad de alterar el código fuente.
+
+Autonomía y Robustez Energética: El dispositivo fue diseñado y testeado para operar de forma 100% autónoma e independiente de una computadora, siendo alimentado por una fuente externa regulada de 5V DC a 2.4A (12W). Esto garantiza el suministro eléctrico necesario para absorber los picos de demanda de corriente del servomotor y el buzzer durante eventos críticos de acceso, evitando caídas de tensión (brownouts) y garantizando la estabilidad operativa del microcontrolador y el bus I2C.
 ---
 
 ## 📐 Arquitectura del Sistema (RTOS)
@@ -41,6 +53,7 @@ Parchado por Inyección de Macros: Para resolver conflictos con funciones de tie
 ## ⏱️ Conceptos de Tiempo Real Demostrados
 El diseño e implementación de este sistema de control de acceso sirve como demostración práctica de los principios fundamentales de los Sistemas Operativos de Tiempo Real (RTOS). A través del uso de las APIs nativas de FreeRTOS, se resolvieron problemas de concurrencia y sincronización de hardware que serían inviables mediante programación secuencial tradicional.
 
+<<<<<<< HEAD
 Los conceptos demostrados en el firmware se detallan a continuación:
 
 1. Comunicación Asíncrona mediante Paso de Mensajes (Queues)
@@ -63,3 +76,8 @@ Demostrado mediante la configuración de tiempos de espera definidos por la macr
 Operación: La tarea de procesamiento de seguridad ejecuta la función xQueueReceive(&xColaTeclas, ..., portMAX_DELAY). En lugar de ejecutar un bucle de espera activa (busy waiting o polling) que consumiría recursos de cómputo de manera innecesaria, el planificador de FreeRTOS remueve la tarea de la lista de ejecución y la coloca en estado bloqueado (Blocked).
 
 Optimización de Recursos: En estado de reposo (mientras nadie interactúa con el teclado físico), la tarea consume exactamente el 0% de tiempo de CPU. El microcontrolador queda libre para procesar otras subtareas de fondo o ingresar a modos de bajo consumo. En el instante exacto en que el usuario presiona una tecla, el kernel de FreeRTOS despierta la tarea de manera determinista en base a su prioridad, procesando el evento sin retardos perceptibles.
+=======
+1. **Paso de Mensajes Asíncrono (`Queue`):** La tarea del teclado produce pulsaciones que la tarea de seguridad consume. Si el sistema se bloquea por penalización, la cola almacena o descarta caracteres de forma segura.
+2. **Exclusión Mutua (`Mutex`):** Protege el bus de comunicación compartido (I2C) de la pantalla LCD, evitando colisiones de datos si múltiples tareas intentan escribir en ella en el futuro.
+3. **Bloqueo Eficiente (`portMAX_DELAY`):** La tarea de procesamiento de código consume **0% de CPU** en estado de reposo, permaneciendo bloqueada hasta que ingresa un evento a la cola.
+>>>>>>> aa0a479f5e0d00407cdaf8234b927007fc3be831
