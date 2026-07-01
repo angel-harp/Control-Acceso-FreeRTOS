@@ -12,22 +12,22 @@
 #include "rom/ets_sys.h"      // Estructura base de tiempos de Espressif
 
 // --- ¡EL PARCHE MÁGICO! ---
-// Cada vez que la librería intente usar ets_delay_us, usará la versión moderna nativa.
-#define ets_delay_us(us) esp_rom_delay_us(us)
+
+#define esp_rom_delay_us(us)
+#define ets_delay_us  esp_rom_delay_us
 
 // Ahora sí, incluimos la librería del LCD que se va a beneficiar del parche
 #include "I2C_LCD_PCF8574.h"
 #include "driver/gpio.h"
 #include "driver/i2c.h"
+#include "driver/ledc.h"
 
-// Mapeo de variables de configuración
-#define CLAVE_CORRECTA   CONFIG_CLAVE_MAESTRA
-
-// Definiciones de configuración (ver Menuconfig)
-#define PIN_CERRADURA    CONFIG_PIN_SERVO
-#define PIN_ALARMA       CONFIG_PIN_LED_ROJO
-#define LED_VERDE        CONFIG_PIN_LED_VERDE
-
+// Mapeo unificado directo de variables de configuración de Kconfig
+#define CLAVE_CORRECTA    CONFIG_CLAVE_MAESTRA
+#define PIN_CERRADURA     CONFIG_PIN_SERVO
+#define LED_VERDE         CONFIG_PIN_LED_VERDE
+#define LED_ROJO          CONFIG_PIN_LED_ROJO
+#define PIN_BUZZER        CONFIG_PIN_BUZZER
 
 // Recursos de FreeRTOS
 QueueHandle_t xColaTeclas = NULL;
@@ -37,16 +37,21 @@ SemaphoreHandle_t xMutexLCD = NULL;
 i2c_lcd_pcf8574_handle_t xLcdHandle;
 
 // Prototipos de tareas
+void vModificarAnguloServo(int angulo);
 void vTareaEscanearTeclado(void *pvParameters);
 void vTareaProcesarSeguridad(void *pvParameters);
+void vBuzzerAccesoPermitido(void);
+void vBuzzerAccesoDenegado(void);
 
-void app_main(void) {
+void app_main(void) 
+{
     printf("Inicializando Sistema de Seguridad RTOS en ESP32...\n");
 
     // 1. Configurar Teclado Matricial (Filas como salidas, Columnas como entradas con pull-up)
     uint64_t mascara_filas = (1ULL << CONFIG_PIN_FILA_1) | (1ULL << CONFIG_PIN_FILA_2) | 
                              (1ULL << CONFIG_PIN_FILA_3) | (1ULL << CONFIG_PIN_FILA_4);
-    gpio_config_t io_conf_filas = {
+    gpio_config_t io_conf_filas = 
+    {
         .pin_bit_mask = mascara_filas,
         .mode = GPIO_MODE_OUTPUT,
         .pull_up_en = GPIO_PULLUP_DISABLE,
@@ -57,7 +62,8 @@ void app_main(void) {
 
     uint64_t mascara_columnas = (1ULL << CONFIG_PIN_COL_1) | (1ULL << CONFIG_PIN_COL_2) | 
                                 (1ULL << CONFIG_PIN_COL_3) | (1ULL << CONFIG_PIN_COL_4);
-    gpio_config_t io_conf_columnas = {
+    gpio_config_t io_conf_columnas = 
+    {
         .pin_bit_mask = mascara_columnas,
         .mode = GPIO_MODE_INPUT,
         .pull_up_en = GPIO_PULLUP_ENABLE,
@@ -67,18 +73,70 @@ void app_main(void) {
     gpio_config(&io_conf_columnas);
 
     // ====================================================================
+    // INICIALIZACIÓN DE SALIDAS DIGITALES (LEDS Y BUZZER DESDE KCONFIG)
+    // ====================================================================
+    
+    // Configurar LED Verde
+    gpio_reset_pin(LED_VERDE);
+    gpio_set_direction(LED_VERDE, GPIO_MODE_OUTPUT);
+    gpio_set_level(LED_VERDE, 0); 
+
+    // Configurar LED Rojo
+    gpio_reset_pin(LED_ROJO);
+    gpio_set_direction(LED_ROJO, GPIO_MODE_OUTPUT);
+    gpio_set_level(LED_ROJO, 0); 
+
+    // Configurar Buzzer dinámico 
+    gpio_reset_pin(CONFIG_PIN_BUZZER);
+    gpio_set_direction(CONFIG_PIN_BUZZER, GPIO_MODE_OUTPUT);
+    gpio_set_level(CONFIG_PIN_BUZZER, 0);
+
+    // ====================================================================
+    // CONFIGURACIÓN DEL PERIFÉRICO PWM REAL PARA EL SERVOMOTOR
+    // ====================================================================
+    
+    // 1. Configurar el Temporizador (Timer) del PWM
+    ledc_timer_config_t ledc_timer = 
+    {
+        .speed_mode       = LEDC_LOW_SPEED_MODE,
+        .timer_num        = LEDC_TIMER_0,
+        .duty_resolution  = LEDC_TIMER_13_BIT, // Resolución de 13 bits (0 a 8191)
+        .freq_hz          = 50,                // Frecuencia estándar para servos (50 Hz)
+        .clk_cfg          = LEDC_AUTO_CLK
+    };
+    ledc_timer_config(&ledc_timer);
+
+    // 2. Configurar el Canal de Salida acoplado al Pin del Servo
+    ledc_channel_config_t ledc_channel = 
+    {
+        .speed_mode     = LEDC_LOW_SPEED_MODE,
+        .channel        = LEDC_CHANNEL_0,
+        .timer_sel      = LEDC_TIMER_0,
+        .intr_type      = LEDC_INTR_DISABLE,
+        .gpio_num       = PIN_CERRADURA,       // Usa la macro de tu CONFIG_PIN_SERVO (GPIO 12)
+        .duty           = 0,                   // Arranca cerrado (0% duty)
+        .hpoint         = 0
+    };
+    ledc_channel_config(&ledc_channel);
+    
+    // Colocar el servo en posición inicial de bloqueo (0 grados) inmediatamente
+    vModificarAnguloServo(0);
+
+    // ====================================================================
     // INICIALIZACIÓN FÍSICA DEL BUS I2C Y LCD
     // ====================================================================
     
     // 1. Configurar el driver maestro I2C nativo de ESP-IDF
-    i2c_config_t conf_i2c = {
+    i2c_config_t conf_i2c = 
+    {
         .mode = I2C_MODE_MASTER,
-        .sda_io_num = CONFIG_PIN_SDA,         // Pin asignado en tu Kconfig
-        .scl_io_num = CONFIG_PIN_SCL,         // Pin asignado en tu Kconfig
+        .sda_io_num = CONFIG_PIN_SDA,         
+        .scl_io_num = CONFIG_PIN_SCL,         
         .sda_pullup_en = GPIO_PULLUP_ENABLE,
         .scl_pullup_en = GPIO_PULLUP_ENABLE,
         .master.clk_speed = 100000            // Velocidad estándar I2C (100 kHz)
     };
+
     i2c_param_config(I2C_NUM_0, &conf_i2c);
     i2c_driver_install(I2C_NUM_0, conf_i2c.mode, 0, 0, 0);
     vTaskDelay(pdMS_TO_TICKS(100)); // Espera de estabilidad
@@ -89,6 +147,9 @@ void app_main(void) {
 
     //LE DAMOS LA ORDEN DE ARRANQUE A LA PANTALLA PARA QUE SE CONFIGURE SEGÚN SUS PROTOCOLOS INTERNOS
     lcd_begin(&xLcdHandle, 16, 2);
+
+    lcd_set_backlight(&xLcdHandle, true);// Enciende la luz de fondo de forma explícita
+    
     
     // Opcional: Si tu librería requiere un paso de encendido posterior
     lcd_clear(&xLcdHandle);
@@ -99,15 +160,60 @@ void app_main(void) {
     xColaTeclas = xQueueCreate(10, sizeof(char));
     xMutexLCD = xSemaphoreCreateMutex();
 
-    if (xColaTeclas != NULL && xMutexLCD != NULL) {
+    if (xColaTeclas != NULL && xMutexLCD != NULL) 
+    {
         xTaskCreate(vTareaEscanearTeclado, "Teclado", 2048, NULL, 2, NULL);
         xTaskCreate(vTareaProcesarSeguridad, "Seguridad", 2048, NULL, 3, NULL);
     }
 }
 
+/* --- Implementación de Funciones Auxiliares --- */
+
+// Función de capa de abstracción para el servomotor
+void vModificarAnguloServo(int angulo) 
+{
+    // Mapeo matemático para pasar de ángulo (0-180) a Duty Cycle en microsegundos
+    // 0° -> 0.5ms (500us) | 90° -> 1.5ms (1500us) | 180° -> 2.5ms (2500us)
+    uint32_t duty_us = 500 + ((angulo * 2000) / 180);
+    
+    // Convertir microsegundos al valor binario del duty cycle (Resolución de 13 bits)
+    // Fórmula: (duty_us * (2^13 - 1)) / Período_Total_en_us (20000us para 50Hz)
+    uint32_t duty_registro = (duty_us * 8191) / 20000;
+    
+    // Aplicar el nuevo Duty Cycle al hardware del ESP32
+    ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, duty_registro);
+    ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0);
+    
+    printf("[SERVO REAL] Ángulo modificado a %d grados (Duty binario: %lu).\n", angulo, duty_registro);
+}
+
+//Funciones de sonido para el BUZZER.
+
+void vBuzzerAccesoPermitido(void) 
+{
+    // Un pitido único, limpio y rápido de éxito (150ms)
+    gpio_set_level(PIN_BUZZER, 1);
+    vTaskDelay(pdMS_TO_TICKS(150));
+    gpio_set_level(PIN_BUZZER, 0);
+}
+
+void vBuzzerAccesoDenegado(void) 
+{
+    // Tres ráfagas lentas y espaciadas de error (Claramente perceptibles)
+    for (int i = 0; i < 3; i++) 
+    {
+        gpio_set_level(PIN_BUZZER, 1);
+        vTaskDelay(pdMS_TO_TICKS(300)); // 300 milisegundos encendido
+        gpio_set_level(PIN_BUZZER, 0);
+        vTaskDelay(pdMS_TO_TICKS(150)); // 150 milisegundos de silencio
+    }
+}
+
+
 /* --- Implementación de Tareas --- */
 
-void vTareaEscanearTeclado(void *pvParameters) {
+void vTareaEscanearTeclado(void *pvParameters) 
+{
     // Definimos la matriz con los caracteres físicos del teclado 4x4
     char teclas[4][4] = 
     {
@@ -130,7 +236,8 @@ void vTareaEscanearTeclado(void *pvParameters) {
     for (;;) 
     {
         // ALGORITMO DE BARRIDO MATRICIAL
-        for (int f = 0; f < 4; f++) {
+        for (int f = 0; f < 4; f++) 
+        {
             // 1. Ponemos la fila actual en BAJO (0V)
             gpio_set_level(pines_filas[f], 0);
             vTaskDelay(pdMS_TO_TICKS(5)); // Mini retraso para que se estabilice el voltaje del pin
@@ -161,20 +268,26 @@ void vTareaEscanearTeclado(void *pvParameters) {
     }
 }
 
-void vTareaProcesarSeguridad(void *pvParameters) {
+void vTareaProcesarSeguridad(void *pvParameters) 
+{
     char teclaRecibida;
     char bufferClave[5] = {0}; 
     uint8_t indiceClave = 0;
     uint8_t intentosFallidos = 0;
 
-    for (;;) {
-        if (xQueueReceive(xColaTeclas, &teclaRecibida, portMAX_DELAY) == pdPASS) {
+    for (;;) 
+    {
+        if (xQueueReceive(xColaTeclas, &teclaRecibida, portMAX_DELAY) == pdPASS) 
+        {
             
-            if (teclaRecibida == '#') {
-                if (indiceClave > 0) {
+            if (teclaRecibida == '#') 
+            {
+                if (indiceClave > 0) 
+                {
                     bufferClave[indiceClave] = '\0';
 
-                    if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) {
+                    if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) 
+                    {
                         lcd_clear(&xLcdHandle);
                         lcd_set_cursor(&xLcdHandle, 0, 0);
                         lcd_print(&xLcdHandle, "Verificando...");
@@ -182,53 +295,108 @@ void vTareaProcesarSeguridad(void *pvParameters) {
                     }
                     vTaskDelay(pdMS_TO_TICKS(500)); 
 
-                    if (strcmp(bufferClave, CLAVE_CORRECTA) == 0) {
-                        if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) {
+                    // =========================================================
+                    // 🟢 CASO 1: LA CLAVE ES CORRECTA (ACCESO PERMITIDO)
+                    // =========================================================
+                    if (strcmp(bufferClave, CLAVE_CORRECTA) == 0) 
+                    {
+                        // 1. Activar indicadores físicos inmediatos (LED Verde y Buzzer de éxito)
+                        gpio_set_level(CONFIG_PIN_LED_VERDE, 1);
+
+                        vBuzzerAccesoPermitido();
+
+                        // 2. Mostrar mensajes en el LCD
+                        if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) 
+                        {
                             lcd_clear(&xLcdHandle);
                             lcd_set_cursor(&xLcdHandle, 0, 0);
-                            lcd_print(&xLcdHandle, "ACCESO PERMITIDO");
+                            lcd_print(&xLcdHandle, "   ACCESO OK!   ");
+                            lcd_set_cursor(&xLcdHandle, 0, 1);
+                            lcd_print(&xLcdHandle, "   BIENVENIDO   ");
                             xSemaphoreGive(xMutexLCD);
                         }
+
+                        // 3. Abrir el pestillo físico (Mover el servo a 90 grados)
+                        
+                        vModificarAnguloServo(90); 
+
                         intentosFallidos = 0;
+                        
+                        // 4. Esperar 4 segundos con la puerta abierta
                         vTaskDelay(pdMS_TO_TICKS(4000)); 
 
-                        if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) {
+                        // 5. Cierre automático de seguridad (Cerrar servo y apagar LED)
+                        vModificarAnguloServo(0);
+                        gpio_set_level(CONFIG_PIN_LED_VERDE, 0);
+
+                        // 6. Restaurar el mensaje inicial de la pantalla
+                        if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) 
+                        {
                             lcd_clear(&xLcdHandle);
                             lcd_set_cursor(&xLcdHandle, 0, 0);
                             lcd_print(&xLcdHandle, " Ingrese Clave: ");
                             xSemaphoreGive(xMutexLCD);
                         }
                     } 
-                    else {
+                    // =========================================================
+                    // 🔴 CASO 2: LA CLAVE ES INCORRECTA (ACCESO DENEGADO)
+                    // =========================================================
+                    else 
+                    {
                         intentosFallidos++;
-                        if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) {
+                        
+                        // 1. Activar indicadores físicos inmediatos (LED Rojo y Buzzer de error)
+                        gpio_set_level(CONFIG_PIN_LED_ROJO, 1);
+
+                        vBuzzerAccesoDenegado();
+
+                        // 2. Mostrar error en la pantalla LCD
+                        if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) 
+                        {
                             lcd_clear(&xLcdHandle);
                             lcd_set_cursor(&xLcdHandle, 0, 0);
                             lcd_print(&xLcdHandle, "CLAVE INCORRECTA");
                             xSemaphoreGive(xMutexLCD);
                         }
-                        vTaskDelay(pdMS_TO_TICKS(2000)); 
+                        
+                        // Mantener la alerta visual por el tiempo restante de la penalización visual
+                        vTaskDelay(pdMS_TO_TICKS(1000)); 
+                        
+                        // Apagar el LED Rojo después de la alerta inicial
+                        gpio_set_level(CONFIG_PIN_LED_ROJO, 0);
 
-                        if (intentosFallidos >= 3) {
-                            if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) {
+                        // 3. Evaluar si corresponde bloqueo total por acumulación de intentos
+                        if (intentosFallidos >= 3) 
+                        {
+                            if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) 
+                            {
                                 lcd_clear(&xLcdHandle);
                                 lcd_set_cursor(&xLcdHandle, 0, 0);
                                 lcd_print(&xLcdHandle, "BLOQUEADO 10 SEG");
                                 xSemaphoreGive(xMutexLCD);
                             }
+                            
+                            // Dejar el LED Rojo encendido de forma fija durante todo el bloqueo
+                            gpio_set_level(CONFIG_PIN_LED_ROJO, 1);
+                            
                             xQueueReset(xColaTeclas); 
                             vTaskDelay(pdMS_TO_TICKS(10000)); 
+                            
+                            gpio_set_level(CONFIG_PIN_LED_ROJO, 0);
                             intentosFallidos = 0; 
 
-                            if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) {
+                            if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) 
+                            {
                                 lcd_clear(&xLcdHandle);
                                 lcd_set_cursor(&xLcdHandle, 0, 0);
                                 lcd_print(&xLcdHandle, " Ingrese Clave: ");
                                 xSemaphoreGive(xMutexLCD);
                             }
                         } 
-                        else {
-                            if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) {
+                        else 
+                        {
+                            if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) 
+                            {
                                 lcd_clear(&xLcdHandle);
                                 lcd_set_cursor(&xLcdHandle, 0, 0);
                                 lcd_print(&xLcdHandle, " Ingrese Clave: ");
@@ -240,10 +408,12 @@ void vTareaProcesarSeguridad(void *pvParameters) {
                     indiceClave = 0;
                 }
             } 
-            else if (teclaRecibida == '*') {
+            else if (teclaRecibida == '*') 
+            {
                 memset(bufferClave, 0, sizeof(bufferClave));
                 indiceClave = 0;
-                if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) {
+                if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) 
+                {
                     lcd_clear(&xLcdHandle);
                     lcd_set_cursor(&xLcdHandle, 0, 0);
                     lcd_print(&xLcdHandle, " Entrada Borrada");
@@ -254,23 +424,23 @@ void vTareaProcesarSeguridad(void *pvParameters) {
                     xSemaphoreGive(xMutexLCD);
                 }
             } 
-            else {
-                if (indiceClave < 4) {
+            else 
+            {
+                if (indiceClave < 4) 
+                {
                     bufferClave[indiceClave] = teclaRecibida;
                     
                     if (xSemaphoreTake(xMutexLCD, portMAX_DELAY) == pdTRUE) 
                     {
-                        // SI queremos que se vea en la pantalla lo que estamos ingresando
+
+                        /* Si queremos que se vean los numeros que ingresas en la pantalla LCD.
                         lcd_set_cursor(&xLcdHandle, indiceClave, 1);
-                        // Creamos un string temporal con el número y su terminación limpia
                         char textoNumero[2] = {teclaRecibida, '\0'};
-                        // Imprimimos el número real en la pantalla física
-                        lcd_print(&xLcdHandle, textoNumero);
+                        lcd_print(&xLcdHandle, textoNumero);*/
 
-
-                        /* Si queremos que aparezca un asterisco en la posición actual
+                        //Si queremos que aparezca un asterisco en la posición actual
                         lcd_set_cursor(&xLcdHandle, indiceClave, 1);
-                        lcd_print(&xLcdHandle, "*");*/
+                        lcd_print(&xLcdHandle, "*");
                         
                         xSemaphoreGive(xMutexLCD);
                     }
@@ -280,3 +450,6 @@ void vTareaProcesarSeguridad(void *pvParameters) {
         }
     }
 }
+
+
+

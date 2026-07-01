@@ -49,10 +49,10 @@ menu "Configuracion Cerradura FreeRTOS"
 
     config PIN_COL_1
         int "Columna 1 GPIO"
-        default 21
+        default 26
     config PIN_COL_2
         int "Columna 2 GPIO"
-        default 22
+        default 27
     config PIN_COL_3
         int "Columna 3 GPIO"
         default 23

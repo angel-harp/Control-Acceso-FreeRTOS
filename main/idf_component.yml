@@ -1,3 +1,0 @@
-dependencies:
-  # Formato directo para ESP-IDF v5.x
-  iamflinks/i2c_lcd_pcf8574: "^1.0.1"
