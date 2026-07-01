@@ -129,3 +129,9 @@ Operación: La tarea de procesamiento de seguridad ejecuta la función xQueueRec
 
 Optimización de Recursos: En estado de reposo (mientras nadie interactúa con el teclado físico), la tarea consume exactamente el 0% de tiempo de CPU. El microcontrolador queda libre para procesar otras subtareas de fondo o ingresar a modos de bajo consumo. En el instante exacto en que el usuario presiona una tecla, el kernel de FreeRTOS despierta la tarea de manera determinista en base a su prioridad, procesando el evento sin retardos perceptibles.
 
+## 📋 Video
+
+https://github.com/user-attachments/assets/6f5eab6c-8a36-40e3-8806-7e9917ee310c
+
+
+
